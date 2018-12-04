@@ -115,8 +115,8 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   ekf_.Q_ = MatrixXd(4, 4);
   ekf_.Q_ << (dt_cer / 4) * noise_ax, 0,                       (dt_bis / 2) * noise_ax, 0,
              0,                       (dt_cer / 4) * noise_ay, 0,                       (dt_bis / 2) * noise_ay,
-             (dt_bis / 2) * noise_ax, 0,                       dt_prim + noise_ax,      0,
-             0,                       (dt_bis / 2) * noise_ay, 0,                       dt_prim + noise_ay;
+             (dt_bis / 2) * noise_ax, 0,                       dt_prim * noise_ax,      0,
+             0,                       (dt_bis / 2) * noise_ay, 0,                       dt_prim * noise_ay;
   
   // update timestamp
   previous_timestamp_ = measurement_pack.timestamp_;
