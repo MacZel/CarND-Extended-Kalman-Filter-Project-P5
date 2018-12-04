@@ -21,8 +21,10 @@ FusionEKF::FusionEKF() {
   R_radar_ = MatrixXd(3, 3);
   H_laser_ = MatrixXd(2, 4);
   Hj_ = MatrixXd(3, 4);
-  ekf_.F_ = MatrixXd::Identity(4, 4);
+  
   ekf_.P_ = MatrixXd::Identity(4, 4);
+  ekf_.P_(2, 2) = 1000;
+  ekf_.P_(3, 3) = 1000;
 
   //measurement covariance matrix - laser
   R_laser_ << 0.0225, 0,
@@ -36,13 +38,6 @@ FusionEKF::FusionEKF() {
   //measurement matrix - laser
   H_laser_ << 1, 0, 0, 0,
               0, 1, 1, 1;
-  
-  //initial jacobian
-  Hj_ << 1, 1, 0, 0,
-         1, 1, 0, 0,
-         1, 1, 1, 1;
-  
-  
 };
 
 /**
@@ -68,21 +63,26 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       // rho - range
       // phi - bearing
       // rho_dot - radial_velocity
-      float rho, phi, rho_dot;
+      double c1, c2, rho, phi, rho_dot;
       
-      rho = measurement_pack.raw_measurements_(0);
-      phi = measurement_pack.raw_measurements_(1);
-      rho_dot = measurement_pack.raw_measurements_(2);
+      rho = measurement_pack.raw_measurements_[0];
+      phi = measurement_pack.raw_measurements_[1];
+      rho_dot = measurement_pack.raw_measurements_[2];
       
-      ekf_.x_ << rho * cos(phi),
-                rho * sin(phi),
-                rho_dot * cos(phi),
-                rho_dot * sin(phi);
+      c1 = rho * cos(phi);
+      c2 = rho * sin(phi);
+      if ( c1 < 0.0001 ) {
+        c1 = 0.0001;
+      }
+      if ( c2 < 0.0001 ) {
+        c2 = 0.0001;
+      }
+      ekf_.x_ << c1, c2, rho_dot * cos(phi), rho_dot * sin(phi);
     }
     // initialize the state - Laser
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
-      ekf_.x_ << measurement_pack.raw_measurements_(0),
-                measurement_pack.raw_measurements_(1),
+      ekf_.x_ << measurement_pack.raw_measurements_[0],
+                measurement_pack.raw_measurements_[1],
                 0, 0;
     };
     
@@ -99,28 +99,29 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
    *  Prediction
    ****************************************************************************/
 
-  float dt, dt_prim, dt_bis, dt_cer, noise_ax, noise_ay;
+  double dt, dt_prim, dt_bis, dt_cer, noise_ax, noise_ay;
   
   // Update the state transition matrix F according to the new elapsed time.
   // - Time is measured in seconds.
   // Update the process noise covariance matrix.
-  noise_ax = 9;
-  noise_ay = 9;
+  noise_ax = 9.0;
+  noise_ay = 9.0;
   
   // multiplied by 10^(-6) to get nanoseconds
   dt = (measurement_pack.timestamp_ - previous_timestamp_) / 1000000.0;
-  dt_prim = pow(dt, 2);
+  dt_prim = dt * dt;
   dt_bis = dt_prim * dt;
   dt_cer = dt_bis * dt;
   
+  ekf_.F_ = MatrixXd::Identity(4, 4);
   ekf_.F_(0, 2) = dt;
   ekf_.F_(1, 3) = dt;
   
   ekf_.Q_ = MatrixXd(4, 4);
-  ekf_.Q_ << dt_cer / 4 * noise_ax, 0,                     dt_bis / 2 * noise_ax, 0,
-             0,                     dt_cer / 4 * noise_ay, 0,                     dt_bis / 2 * noise_ay,
-             dt_bis / 2 * noise_ax, 0,                     dt_prim + noise_ax,    0,
-             0,                     dt_bis / 2 * noise_ay, 0,                     dt_prim + noise_ay;
+  ekf_.Q_ << (dt_cer / 4) * noise_ax, 0,                       (dt_bis / 2) * noise_ax, 0,
+             0,                       (dt_cer / 4) * noise_ay, 0,                       (dt_bis / 2) * noise_ay,
+             (dt_bis / 2) * noise_ax, 0,                       dt_prim + noise_ax,      0,
+             0,                       (dt_bis / 2) * noise_ay, 0,                       dt_prim + noise_ay;
   
   // update timestamp
   previous_timestamp_ = measurement_pack.timestamp_;
@@ -135,15 +136,13 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
   // Update the state and covariance matrices.
   if (measurement_pack.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
-    Tools tools;
-    Hj_ = tools.CalculateJacobian(ekf_.x_);
-    ekf_.H_ = Hj_;
+    ekf_.H_ = tools.CalculateJacobian(ekf_.x_);
     ekf_.R_ = R_radar_;
     ekf_.UpdateEKF(measurement_pack.raw_measurements_);
   } else {
     // Laser updates
     ekf_.H_ = H_laser_;
-    ekf_.R_ = R_radar_;
+    ekf_.R_ = R_laser_;
     ekf_.Update(measurement_pack.raw_measurements_);
   };
 
