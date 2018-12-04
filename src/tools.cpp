@@ -48,7 +48,7 @@ VectorXd Tools::CalculateRMSE(const vector<VectorXd> &estimations,
 MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
   
   MatrixXd Hj(3,4);
-  float px, py, vx, vy,
+  double px, py, vx, vy,
         sum_of_squares, square_root, one_and_half_root, diff;
   
   //recover state parameters
@@ -58,16 +58,21 @@ MatrixXd Tools::CalculateJacobian(const VectorXd& x_state) {
   vy = x_state(3);
   
   // px^2 + py^2
-  sum_of_squares = pow(px, 2) + pow(py, 2);
+  sum_of_squares = px * px + py * py;
+  
+  if ( x_state.size() != 4 ){
+    cout << "CalculateJacobian: State vector is not of size 4." << endl;
+    return Hj;
+  };
   
   //check division by zero
   if (fabs(sum_of_squares) < 0.0001){
-    cout << "CalculateJacobian: Zero Division Error" << endl;
+    cout << "CalculateJacobian: Zero Division Error." << endl;
     return Hj;
   };
   
   // (px^2 + py^2)^(1/2)
-  square_root = pow(sum_of_squares, 0.5);
+  square_root = sqrt(sum_of_squares);
   
   // (px^2 + py^2)*(px^2 + py^2)^(1/2) = (px^2 + py^2)^(3/2)
   one_and_half_root = sum_of_squares * square_root;
