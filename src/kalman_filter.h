@@ -52,6 +52,8 @@ public:
    * @param delta_T Time between k and k+1 in s
    */
   void Predict();
+  
+  void Estimate(const Eigen::VectorXd &y);
 
   /**
    * Updates the state by using standard Kalman Filter equations
