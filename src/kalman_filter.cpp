@@ -69,10 +69,10 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   VectorXd z_prime = VectorXd(3);
   z_prime << rho, phi, rho_dot;
   while (z_prime(1) - z(1) > M_PI/2) {
-    z_prime(1)=z_prime(1) - M_PI;
+    z_prime(1) -= M_PI;
   };
   while (z(1) - z_prime(1) > M_PI/2) {
-    z_prime(1)=z_prime(1) + M_PI;
+    z_prime(1) += M_PI;
   };
   VectorXd y = z - z_prime;
   Estimate(y);

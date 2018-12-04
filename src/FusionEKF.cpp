@@ -63,21 +63,16 @@ void FusionEKF::ProcessMeasurement(const MeasurementPackage &measurement_pack) {
       // rho - range
       // phi - bearing
       // rho_dot - radial_velocity
-      double c1, c2, rho, phi, rho_dot;
+      double rho, phi, rho_dot;
       
       rho = measurement_pack.raw_measurements_[0];
       phi = measurement_pack.raw_measurements_[1];
       rho_dot = measurement_pack.raw_measurements_[2];
       
-      c1 = rho * cos(phi);
-      c2 = rho * sin(phi);
-      if ( c1 < 0.0001 ) {
-        c1 = 0.0001;
-      }
-      if ( c2 < 0.0001 ) {
-        c2 = 0.0001;
-      }
-      ekf_.x_ << c1, c2, rho_dot * cos(phi), rho_dot * sin(phi);
+      ekf_.x_ << rho * cos(phi),
+                 rho * sin(phi),
+                 rho_dot * cos(phi),
+                 rho_dot * sin(phi);
     }
     // initialize the state - Laser
     else if (measurement_pack.sensor_type_ == MeasurementPackage::LASER) {
